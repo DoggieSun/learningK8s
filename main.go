@@ -5,7 +5,9 @@
 // Step 5: Simulate container lifecycle (Creating, Running, etc.)
 // Step 6: Add readiness/liveness probes (simulated)
 // Step 7: Add metrics & logging abstraction
-// Step 8: GC mechanism for terminated pods ← CURRENT STEP
+// Step 8: GC mechanism for terminated pods
+// Step 9: Add graceful termination delay to simulate SIGTERM/SIGKILL
+// Step 10: Simulate signal handler inside container (optional exit delay)
 // ---
 
 package main
@@ -182,6 +184,8 @@ func (pw *PodWorkers) enqueueWork(uid, event string) {
 	ch <- PodWork{UID: uid, Event: event}
 }
 
+// Step 11: Skip sync if PodSpec is unchanged
+
 func (pw *PodWorkers) worker(uid string, ch <-chan PodWork) {
 	const maxRetries = 3
 	for work := range ch {
@@ -207,6 +211,15 @@ func (pw *PodWorkers) worker(uid string, ch <-chan PodWork) {
 
 			retries := 0
 			for retries <= maxRetries {
+				// 模拟检查 PodSpec 是否真的变化
+				pw.mu.Lock()
+				specChanged := simulateSpecChanged()
+				pw.mu.Unlock()
+				if !specChanged {
+					fmt.Printf("[SKIP] Pod %s spec unchanged. Skipping update.", uid)
+					break
+				}
+
 				ok := simulateUpdate(uid)
 				if ok {
 					pw.mu.Lock()
@@ -243,8 +256,12 @@ func (pw *PodWorkers) worker(uid string, ch <-chan PodWork) {
 			pw.states[uid] = PodTerminating
 			pw.mu.Unlock()
 
-			fmt.Printf("[TERM] Pod %s terminating...\n", uid)
-			time.Sleep(500 * time.Millisecond)
+			handled := simulateSigtermHandling(uid)
+			if handled {
+				time.Sleep(50 * time.Millisecond)
+				fmt.Printf("[TERM] Pod %s now sending SIGKILL...", uid)
+				time.Sleep(200 * time.Millisecond)
+			}
 
 			pw.mu.Lock()
 			pw.states[uid] = PodTerminated
@@ -269,6 +286,28 @@ func simulateReadiness() bool {
 
 func simulateLiveness() bool {
 	return rand.Float32() < 0.95
+}
+
+// 模拟 PodSpec 是否发生变化
+func simulateSpecChanged() bool {
+	return rand.Float32() < 0.6 // 60% 概率有变化
+}
+
+// 模拟容器是否处理 SIGTERM
+func simulateContainerHandlesSigterm() bool {
+	return rand.Float32() < 0.5
+}
+
+func simulateSigtermHandling(uid string) bool {
+	fmt.Printf("[TERM] Pod %s received SIGTERM...", uid)
+	if simulateContainerHandlesSigterm() {
+		fmt.Printf("[APP] Pod %s handling SIGTERM inside container (cleanup in progress)...", uid)
+		time.Sleep(250 * time.Millisecond)
+		return true
+	} else {
+		fmt.Printf("[APP] Pod %s did not handle SIGTERM, exiting immediately.", uid)
+		return false
+	}
 }
 
 func main() {

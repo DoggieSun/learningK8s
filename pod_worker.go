@@ -310,27 +310,27 @@ func simulateSigtermHandling(uid string) bool {
 	}
 }
 
-func main() {
-	rand.Seed(time.Now().UnixNano())
-	pw := NewPodWorkers()
-	uids := []string{"podA", "podB", "podC"}
+// func main() {
+// 	rand.Seed(time.Now().UnixNano())
+// 	pw := NewPodWorkers()
+// 	uids := []string{"podA", "podB", "podC"}
 
-	for _, uid := range uids {
-		go func(id string) {
-			for i := 0; i < 10; i++ {
-				pw.UpdatePod(id)
-				time.Sleep(80 * time.Millisecond)
-			}
-		}(uid)
-	}
+// 	for _, uid := range uids {
+// 		go func(id string) {
+// 			for i := 0; i < 10; i++ {
+// 				pw.UpdatePod(id)
+// 				time.Sleep(80 * time.Millisecond)
+// 			}
+// 		}(uid)
+// 	}
 
-	time.Sleep(1 * time.Second)
+// 	time.Sleep(1 * time.Second)
 
-	for _, uid := range uids {
-		pw.TerminatePod(uid)
-	}
+// 	for _, uid := range uids {
+// 		pw.TerminatePod(uid)
+// 	}
 
-	time.Sleep(3 * time.Second)
-	printMetrics()
-	fmt.Println("All pods processed.")
-}
+// 	time.Sleep(3 * time.Second)
+// 	printMetrics()
+// 	fmt.Println("All pods processed.")
+// }
